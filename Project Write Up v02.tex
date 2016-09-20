@@ -1,0 +1,54 @@
+\documentclass[12pt,letterpaper]{article}
+\usepackage[left=20mm, right=20mm, top=25mm, bottom=25mm]{geometry}
+\usepackage{booktabs}
+\begin{document}
+\title{Road Detection in Massive LIDAR Data}
+\maketitle
+%\author{Poulomi Deb}
+
+\section{Objective:}
+From a given LIDAR data set for a geographic region, extracting the road network present in that region.
+
+\section{Goal:} 
+The basic goal for our project is supervised machine learning. Initially we would be given a set of LIDAR data and the corresponding road network map for a particular region. We would try to identify certain points from the road netork map and locate the same in the LIDAR data set. After locating these points in the LIDAR data set we would analyse the data and try to extract various attributes related to the points located. We would also analyse LIDAR data where road is absent. Once the analysis is done we would train the system with various attributes of the LIDAR data for both absence and presence of road. Finally, using this learning we would predict the road network for a different region from the LIDAR data set of that particular geographic region.
+%Given the LIDAR data, we will first learn a model for a particular topology. We would refer to another map present to understand the terrain and create features to sample out points. For instance, we would compare the LIDAR data with the map and single out points which are roads on the map and distinguish features such as latitude, longitude, colour, etc for those points. In turn we will identify a pattern and for each pixel create a training set.\\
+%A training set would be a set of points with defining features (such as colour) and label for whether they comprise of a road or not. We would try to create an image file from the data provided to visualize the problem.
+
+\section{Requisites:}
+\begin{itemize}
+\item Study about LIDAR.
+\item Learn about LAS files, learn libLAS, compile and install libLAS.
+\item Study about Shapefiles as the map data would be shapefiles.
+\item Extract data from a LAS file and try to present it as an image file
+\item Study about point cloud library.
+\end{itemize}
+
+\section{Issues present from the past work done:}
+\begin{enumerate}
+\item LAS tools was used which is not open source, hence need to use libLAS.
+\item Open street map was used. Here the data provided was only a vector which was the mid points only, hence the width of the road could not be determined.
+\end{enumerate}
+
+\section{Timeline and Plan:} 
+\begin{tabular}{p{6cm}p{6cm}}
+        \begin{tabular}{| p{12cm}| l | }
+        \hline
+        Task & Timeline\\
+        \hline
+        Extract data from LAS files. & 15 Sep to 15 Oct\\
+        \hline
+       Finish the initial stage of learning and required installations. Study about Point Cloud Library. &01 Oct to 15 Oct\\
+        \hline
+       Supervised machine learning and training phase. Studying shapefiles and understanding them. & 15 Oct to 31 Oct\\
+        \hline
+      Create a program that would take a LAS file as an input and locate the road network present in that particular region.The output can be in the form of an image file showing the road network. &01 Nov to 15 Dec\\
+        \hline
+        \end{tabular}
+        \end{tabular}
+
+\section{Final Outcome:}
+Create a program that will take a LAS file of a particular region as an input and locate the road network present in that region.
+The output can also be presented as an image file which shows the road network present in that region.
+%Create a program that would take a LAS file as an input and provide an output also a LAS file that would predict the roads from the data. The output could also be presented as an image file that would predict the roads network from the given input data.
+
+\end{document}
