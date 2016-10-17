@@ -19,22 +19,45 @@ def getMaxMinCoordinates(lidarfile):
     return min_x, max_x, min_y, max_y
 
 
-def createImageFile(lidarfile, filename, maxmincoordinates):
-    i = Image.new(mode='RGB', size=(
-    maxmincoordinates[1] - maxmincoordinates[0] + 1, maxmincoordinates[3] - maxmincoordinates[2] + 1), color=None)
+def createImageFile(lidarfile, filename,image_size_x,image_size_y, maxmincoordinates):
+    i = Image.new(mode='RGB', size=(image_size_x,image_size_y), color=None)
     for p in f:
         i.putpixel((int(p.x) - maxmincoordinates[0], int(p.y) - maxmincoordinates[2]),
                    (p.color.red, p.color.green, p.color.blue))
     i.save(filename, format="JPEG")
 
+def createImageforregion(lidarfile,maxmincoordinates,imagefile):
+    status = input('"Do you waant to create image for a particular region of lidar file? Enter Y/Yes or N/No')
+    status=status.upper()
+    if status =='Y' or status =='YES':
+        print("min x coordinate:",maxmincoordinates[0],"max x coordinate",maxmincoordinates[1],"min y coordinate",maxmincoordinates[2],"max y coordinate",maxmincoordinates[3])
+        upper_x=  int(input("Give the x coordinate of the uppermost left point in the diagonal"))
+        upper_y=int(input("Give the y coordinate of the uppermost top point in the diagonal"))
+        lower_x= int(input('Give the x coordinate of the lowermost right point in the diagonal'))
+        lower_y= int(input("Give the y coordinate of the lowermost right point in the diagonal"))
+        i = Image.new(mode='RGB',size=(lower_x-upper_x+1,lower_y-upper_y+1),color=None)
+        for p in lidarfile:
+            if int(p.x)>=upper_x and int(p.x)<=lower_x and int(p.y)>=upper_y and int(p.y)<=lower_y:
+                i.putpixel((int(p.x)-upper_x,int(p.y)-upper_y),(p.color.red,p.color.green,p.color.blue))
+        i.save(imagefile,format="JPEG")
+    else:
+        print("Exiting the application")
+
+
 
 lidar_fileName = '/home/kunal/Downloads/LAS12_Sample_withRGB_Quick_Terrain_Modeler_fixed.las.part'
 image_fileName = "/home/kunal/lidar_image"
+image_fileregion='/home/kunal/lidar_image_rectangle'
+
 
 f = file.File(lidar_fileName, mode='r')
 maxmincoordinates = getMaxMinCoordinates(f)
 f.seek(0)
-createImageFile(f, image_fileName, maxmincoordinates)
+image_size_x = maxmincoordinates[1]-maxmincoordinates[0]+1
+image_size_y= maxmincoordinates[3]-maxmincoordinates[2]+1
+createImageFile(f, image_fileName,image_size_x,image_size_y, maxmincoordinates)
+f.seek(0)
+createImageforregion(f,maxmincoordinates,image_fileregion)
 # header = f.header
 # print(header.major_version,header.minor_version)
 # print(header.data_format_id)
