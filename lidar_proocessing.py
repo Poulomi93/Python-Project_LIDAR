@@ -18,6 +18,23 @@ def getMaxMinCoordinates(lidarfile):
             min_y = int(p.y)
     return min_x, max_x, min_y, max_y
 
+def getMaxMinCoordinatesforlidarfile(lidarfile):
+    max_x = -1
+    min_x = 10000000000000
+    max_y = -1
+    min_y = 1000000000000
+    lidarfile.seek(0)
+    for p in lidarfile:
+        if p.x > max_x:
+            max_x = int(p.x)
+        if p.x < min_x:
+            min_x = int(p.x)
+        if p.y > max_y:
+            max_y = int(p.y)
+        if p.y < min_y:
+            min_y = int(p.y)
+    return min_x, max_x, min_y, max_y
+
 
 def createImageFile(lidarfile, filename,image_size_x,image_size_y, maxmincoordinates):
     i = Image.new(mode='RGB', size=(image_size_x,image_size_y), color=None)
@@ -25,6 +42,16 @@ def createImageFile(lidarfile, filename,image_size_x,image_size_y, maxmincoordin
         i.putpixel((int(p.x) - maxmincoordinates[0], int(p.y) - maxmincoordinates[2]),
                    (p.color.red, p.color.green, p.color.blue))
     i.save(filename, format="JPEG")
+
+def getlistoflidardata(lidarfile):
+    listOfLidardata=[]
+    for p in lidarfile:
+        listOfLidardata.append(p)
+    return listOfLidardata
+
+def getlidardatafile(lidar_fileName):
+    f = file.File(lidar_fileName, mode='r')
+    return f
 
 def createImageforregion(lidarfile,maxmincoordinates,imagefile):
     status = input('"Do you waant to create image for a particular region of lidar file? Enter Y/Yes or N/No')
@@ -43,21 +70,45 @@ def createImageforregion(lidarfile,maxmincoordinates,imagefile):
     else:
         print("Exiting the application")
 
+def printHeaderInformation(lidarfile):
+    header = lidarfile.header
+    print("Major Version:",header.major_version,", Minor Version:",header.minor_version)
+    print("Data format id:",header.data_format_id)
+    print("Header offset:",header.offset)
+    print("Header max:",header.max)
+    print("Header min:",header.min)
+    print("sr.proj4",header.srs.proj4)
+    print("srs.proj4.getproj4",header.srs.get_proj4())
 
 
-lidar_fileName = '/home/kunal/Downloads/LAS12_Sample_withRGB_Quick_Terrain_Modeler_fixed.las.part'
-image_fileName = "/home/kunal/lidar_image"
-image_fileregion='/home/kunal/lidar_image_rectangle'
+
+if __name__=="__main__" :
+    lidar_fileName = "las_tile_46138/2035000.25_541249.75_2036250.25_539999.75.las"
+    #lidar_fileName = 'LAS12_Sample_withRGB_Quick_Terrain_Modeler_fixed.las.part'
+    #lidar_fileName = '/home/kunal/Downloads/LAS12_Sample_withRGB_Quick_Terrain_Modeler_fixed.las.part'
+    image_fileName = "lidar_image"
+    #image_fileName = "/home/kunal/lidar_image"
+    image_fileregion='lidar_image_rectangle'
+    #image_fileregion='/home/kunal/lidar_image_rectangle'
+    f = file.File(lidar_fileName, mode='r')
+    printHeaderInformation(f)
+    maxmincoordinates = getMaxMinCoordinates(f)
+    f.seek(0)
+    image_size_x = maxmincoordinates[1]-maxmincoordinates[0]+1
+    image_size_y= maxmincoordinates[3]-maxmincoordinates[2]+1
+    createImageFile(f, image_fileName,image_size_x,image_size_y, maxmincoordinates)
+    f.seek(0)
+    createImageforregion(f,maxmincoordinates,image_fileregion)
 
 
-f = file.File(lidar_fileName, mode='r')
-maxmincoordinates = getMaxMinCoordinates(f)
-f.seek(0)
-image_size_x = maxmincoordinates[1]-maxmincoordinates[0]+1
-image_size_y= maxmincoordinates[3]-maxmincoordinates[2]+1
-createImageFile(f, image_fileName,image_size_x,image_size_y, maxmincoordinates)
-f.seek(0)
-createImageforregion(f,maxmincoordinates,image_fileregion)
+
+
+
+
+
+
+
+
 # header = f.header
 # print(header.major_version,header.minor_version)
 # print(header.data_format_id)
