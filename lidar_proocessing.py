@@ -41,9 +41,9 @@ def getMaxMinCoordinatesforlidarfile(lidarfile):
     return min_x, max_x, min_y, max_y
 
 
-def createImageFile(lidarfile, filename,image_size_x,image_size_y, maxmincoordinates):
+def createImageFile(lidarfile,filename, image_size_x, image_size_y, maxmincoordinates):
     '''This function creates the image of the specified size'''
-    i = Image.new(mode='RGB', size=(image_size_x,image_size_y), color=None)
+    i = Image.new(mode='RGB', size=(image_size_x, image_size_y), color=None)
     for p in f:
         i.putpixel((int(p.x) - maxmincoordinates[0], int(p.y) - maxmincoordinates[2]),
                    (p.color.red, p.color.green, p.color.blue))
@@ -51,7 +51,7 @@ def createImageFile(lidarfile, filename,image_size_x,image_size_y, maxmincoordin
 
 def getlistoflidardata(lidarfile):
     '''This function returns the list of lidar data points'''
-    listOfLidardata=[]
+    listOfLidardata = []
     for p in lidarfile:
         listOfLidardata.append(p)
     return listOfLidardata
@@ -71,25 +71,25 @@ def createImageforregion(lidarfile, maxmincoordinates, imagefile):
         upper_y = int(input("Give the y coordinate of the uppermost top point in the diagonal"))
         lower_x = int(input('Give the x coordinate of the lowermost right point in the diagonal'))
         lower_y = int(input("Give the y coordinate of the lowermost right point in the diagonal"))
-        i = Image.new(mode='RGB',size=(lower_x-upper_x+1,lower_y-upper_y+1),color=None)
+        i = Image.new(mode='RGB', size=(lower_x-upper_x+1, lower_y-upper_y+1), color=None)
         for p in lidarfile:
-            if int(p.x) >= upper_x and int(p.x) <=lower_x and int(p.y)>=upper_y and int(p.y)<=lower_y:
-                i.putpixel((int(p.x)-upper_x,int(p.y)-upper_y),(p.color.red,p.color.green,p.color.blue))
-        i.save(imagefile,format="JPEG")
+            if int(p.x) >= upper_x and int(p.x) <= lower_x and int(p.y) >= upper_y and int(p.y) <= lower_y:
+                i.putpixel((int(p.x)-upper_x, int(p.y) - upper_y), (p.color.red, p.color.green, p.color.blue))
+        i.save(imagefile, format="JPEG")
     else:
         print("Exiting the application")
 
 def printHeaderInformation(lidarfile):
     ''' This function prints the header information of the lidar file'''
     header = lidarfile.header
-    print("Major Version:", header.major_version,", Minor Version:", header.minor_version)
+    print("Major Version:", header.major_version, ", Minor Version:", header.minor_version)
     print("Data format id:", header.data_format_id)
     print("Header offset:", header.offset)
     print("Header max:", header.max)
     print("Header min:", header.min)
     print("sr.proj4", header.srs.proj4)
     print("srs.proj4.getproj4", header.srs.get_proj4())
-    print("Header Max latitude longitude:", convert_northFL_to_wgs84(header.max[0],header.max[1]))
+    print("Header Max latitude longitude:", convert_northFL_to_wgs84(header.max[0], header.max[1]))
     print("Header Min latitude longitude:", convert_northFL_to_wgs84(header.min[0], header.min[1]))
 
 def getHeaderInformation(lidarfile):
@@ -97,15 +97,16 @@ def getHeaderInformation(lidarfile):
     header = lidarfile.header
     return header
 
-if __name__== "__main__" :
-    lidar_fileName = "las_tile_46138/2035000.25_541249.75_2036250.25_539999.75.las"
-    image_fileName = "lidar_image"
+if __name__ == "__main__":
+    #lidar_fileName = "las_tile_46138/2035000.25_541249.75_2036250.25_539999.75.las"
+    lidar_fileName = "las_tile_46138/2035000.25_544999.75_2036250.25_543749.75.las"
+    image_fileName = "lidar_image2"
     image_fileregion = 'lidar_image_rectangle'
     f = file.File(lidar_fileName, mode='r')
     printHeaderInformation(f)
     maxmincoordinates = getMaxMinCoordinatesforlidarfile(f)
     image_size_x = maxmincoordinates[1]-maxmincoordinates[0]+1
     image_size_y = maxmincoordinates[3]-maxmincoordinates[2]+1
-    createImageFile(f, lidar_fileName.replace('/','')[:-4] + 'lidarimage', image_size_x, image_size_y, maxmincoordinates)
+    createImageFile(f, lidar_fileName.replace('/', '')[:-4] + 'lidarimage', image_size_x, image_size_y, maxmincoordinates)
     f.seek(0)
     createImageforregion(f, maxmincoordinates, image_fileregion)
