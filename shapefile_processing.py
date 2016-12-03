@@ -131,22 +131,22 @@ def getlistofpoints(listofCroppedPoints, latlongmax,latlongmin):
 def drawlinesinimage(width,height,listoflistofpoints,maxmincoordinates):
     #base = Image.open('lidarimage').convert('RGBA')
     #im = Image.new('RGBA',(width, height),(0,255, 0,0))
-    im = Image.open('Compositeimage1').convert('RGBA')
+    im = Image.open('Compositeimage2').convert('RGBA')
     draw = ImageDraw.Draw(im)
-    listofequationoflines = []
+    #listofequationoflines = []
     for listofpoints in listoflistofpoints:
         for i in range(len(listofpoints) -1):
-            points =[(listofpoints[i][0],listofpoints[i][1]),(listofpoints[i+1][0],listofpoints[i+1][1])]
-            x_coords, y_coords = zip(*points)
-            A = vstack([x_coords, ones(len(x_coords))]).T
-            m, c = lstsq(A, y_coords)[0]
-            listofequationoflines.append((m,c))
+            #points =[(listofpoints[i][0],listofpoints[i][1]),(listofpoints[i+1][0],listofpoints[i+1][1])]
+            #x_coords, y_coords = zip(*points)
+            #A = vstack([x_coords, ones(len(x_coords))]).T
+            #m, c = lstsq(A, y_coords)[0]
+            #listofequationoflines.append((m,c))
             print("For ",i,"th line:")
             print(int(listofpoints[i][0])-maxmincoordinates[0],int(listofpoints[i][1]-maxmincoordinates[2]),int(listofpoints[i+1][0])-maxmincoordinates[0],int(listofpoints[i+1][1]-maxmincoordinates[2]))
             draw.line((int(listofpoints[i][0])-maxmincoordinates[0],int(listofpoints[i][1]-maxmincoordinates[2]),int(listofpoints[i+1][0])-maxmincoordinates[0],
                        int(listofpoints[i+1][1]-maxmincoordinates[2])),fill= 128,width=3)
-    im.save('roadimagefile1',format='jpeg')
-    return listofequationoflines
+    im.save('roadimagefile2',format='jpeg')
+    #return listofequationoflines
 
 def convertlattowgs(listoflistofpoints):
     listoflistofwgs =[]
@@ -160,20 +160,86 @@ def convertlattowgs(listoflistofpoints):
     #print(listoflistofwgs)
     return listoflistofwgs
 
+
+def lineMagnitude(x1, y1, x2, y2):
+    lineMagnitude = math.sqrt(math.pow((x2 - x1), 2) + math.pow((y2 - y1), 2))
+    return lineMagnitude
+
+
+# Calc minimum distance from a point and a line segment (i.e. consecutive vertices in a polyline).
+def DistancePointLine(px, py, x1, y1, x2, y2):
+    # http://local.wasp.uwa.edu.au/~pbourke/geometry/pointline/source.vba
+    LineMag = lineMagnitude(x1, y1, x2, y2)
+
+    if LineMag < 0.00000001:
+        DistancePointLine = 9999
+        return DistancePointLine
+
+    u1 = (((px - x1) * (x2 - x1)) + ((py - y1) * (y2 - y1)))
+    u = u1 / (LineMag * LineMag)
+
+    if (u < 0.00001) or (u > 1):
+        # // closest point does not fall within the line segment, take the shorter distance
+        # // to an endpoint
+        ix = lineMagnitude(px, py, x1, y1)
+        iy = lineMagnitude(px, py, x2, y2)
+        if ix > iy:
+            DistancePointLine = iy
+        else:
+            DistancePointLine = ix
+    else:
+        # Intersecting point is on the line, use the formula
+        ix = x1 + u * (x2 - x1)
+        iy = y1 + u * (y2 - y1)
+        DistancePointLine = lineMagnitude(px, py, ix, iy)
+
+    return DistancePointLine
+
 def getlidarpointsclosest(listoflistofpoints,listoflidardata):
-    print('Inside get lidar data points closest')
-    listoflistoflidarpoints =[]
-    for listofpoints in listoflistofpoints:
-        listoflidarpoints = []
-        for point in listofpoints:
-            minimum_distance = 1
-            for p in listoflidardata:
-                dist = math.hypot(point[0]-p.x,point[1]-p.y)
-                if (dist<minimum_distance):
-                    minimum_distance = dist
-                    print(minimum_distance)
+    listofmatchedlidarpoints = []
+    listofunmatchedlidarpoints = []
+    for p in listoflidardata:
+        minimum_distance = 9999
+        for listofpoints in listoflistofpoints:
+            for i in range(len(listofpoints) - 1):
+                distance = DistancePointLine(p.x,p.y,listofpoints[i][0],listofpoints[i][1],listofpoints[i+1][0],listofpoints[i+1][1])
+                if distance<minimum_distance:
+                    minimum_distance = distance
+        if minimum_distance <2.5:
+            listofmatchedlidarpoints.append(p)
+            #print(p.x,p.y,'minimum distance:',minimum_distance)
+            #count = count +1
+        else:
+            listofunmatchedlidarpoints.append(p)
+    print('No of lidar points matched:',len(listofmatchedlidarpoints))
+    print('No of unmatched lidar points:',len(listofunmatchedlidarpoints))
+    return listofmatchedlidarpoints,listofunmatchedlidarpoints
 
+def drawimageofroadfromlidarpoints(image_size_x, image_size_y, maxmincoordinates,listofmatchedpoints):
+    i = Image.new(mode='RGB', size=(image_size_x, image_size_y), color=None)
+    for p in listofmatchedpoints:
+        i.putpixel((int(p.x) - maxmincoordinates[0], int(p.y) - maxmincoordinates[2]),
+                   (p.color.red, p.color.green, p.color.blue))
+    i.save('new_road_image2', format="JPEG")
 
+def writeintotrainingfile(listofmatchedpoints,listofunmatchedpoints):
+    f = open('testdata.txt','a')
+    for p in listofmatchedpoints:
+        f.write(str(p.color.red)+',')
+        f.write(str(p.color.green)+',')
+        f.write(str(p.color.blue)+',')
+        f.write(str(p.z)+',')
+        f.write(str(1))
+        f.write('\n')
+
+    for p in listofunmatchedpoints:
+        f.write(str(p.color.red)+',')
+        f.write(str(p.color.green)+',')
+        f.write(str(p.color.blue)+',')
+        f.write(str(p.z)+',')
+        f.write(str(0))
+        f.write('\n')
+    f.close()
 
 if __name__ == "__main__":
     sf = shapefile.Reader('tl_2016_12073_roads/tl_2016_12073_roads.shp')
@@ -200,10 +266,11 @@ if __name__ == "__main__":
     listoflistofpoints = getlistofpoints(croppedshapes,maxlatlong,minlatlong)
     #printlistofmatchedpoints(listoflistofpoints,listoflidardata)
     newlistoflistofpoints = convertlattowgs(listoflistofpoints)
-    listoflineequations = drawlinesinimage(image_size_x,image_size_y,newlistoflistofpoints,maxmincoordinates)
-    print(listoflineequations)
+    drawlinesinimage(image_size_x,image_size_y,newlistoflistofpoints,maxmincoordinates)
+    listofmatchedlidarpoints,listofunmatchedlidarpoints = getlidarpointsclosest(newlistoflistofpoints,listoflidardata)
+    drawimageofroadfromlidarpoints(image_size_x,image_size_y,maxmincoordinates,listofmatchedlidarpoints)
+    writeintotrainingfile(listofmatchedlidarpoints,listofunmatchedlidarpoints)
     exit(0)
-    getlidarpointsclosest(newlistoflistofpoints,listoflidardata)
     setofmatchedlidarpoints=getsetofmatchedlidarpoints(croppedshapes,listoflatlong,listoflidardata)
     colormatcheddatapoints(setofmatchedlidarpoints,imagefile,maxmincoordinates,lidar_fileName.replace('/','')[:-4]+'road_image')
     lidar_file.close()

@@ -107,6 +107,6 @@ if __name__ == "__main__":
     maxmincoordinates = getMaxMinCoordinatesforlidarfile(f)
     image_size_x = maxmincoordinates[1]-maxmincoordinates[0]+1
     image_size_y = maxmincoordinates[3]-maxmincoordinates[2]+1
-    createImageFile(f, lidar_fileName.replace('/', '')[:-4] + 'lidarimage', image_size_x, image_size_y, maxmincoordinates)
+    createImageFile(f,'lidarimage2', image_size_x, image_size_y, maxmincoordinates)
     f.seek(0)
     createImageforregion(f, maxmincoordinates, image_fileregion)
