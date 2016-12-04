@@ -5,13 +5,18 @@ import lidar_proocessing
 import pyproj
 from PIL import Image, ImageDraw
 import math
+import numpy as np
+from sklearn.neighbors import KDTree
 from numpy import ones,vstack
 from numpy.linalg import lstsq
+
 
 #Constants that are importnat for transformation
 wgs84 = pyproj.Proj(init='epsg:4326')
 northFL = pyproj.Proj(init='esri:102660')
 no_matched = 0
+listofmatchedindices=[]
+listofunmatchedindices=[]
 
 def convert_wgs84_to_northFL(lon, lat):
     '''
@@ -131,7 +136,7 @@ def getlistofpoints(listofCroppedPoints, latlongmax,latlongmin):
 def drawlinesinimage(width,height,listoflistofpoints,maxmincoordinates):
     #base = Image.open('lidarimage').convert('RGBA')
     #im = Image.new('RGBA',(width, height),(0,255, 0,0))
-    im = Image.open('Compositeimage2').convert('RGBA')
+    im = Image.open('Compositeimage1').convert('RGBA')
     draw = ImageDraw.Draw(im)
     #listofequationoflines = []
     for listofpoints in listoflistofpoints:
@@ -145,7 +150,7 @@ def drawlinesinimage(width,height,listoflistofpoints,maxmincoordinates):
             print(int(listofpoints[i][0])-maxmincoordinates[0],int(listofpoints[i][1]-maxmincoordinates[2]),int(listofpoints[i+1][0])-maxmincoordinates[0],int(listofpoints[i+1][1]-maxmincoordinates[2]))
             draw.line((int(listofpoints[i][0])-maxmincoordinates[0],int(listofpoints[i][1]-maxmincoordinates[2]),int(listofpoints[i+1][0])-maxmincoordinates[0],
                        int(listofpoints[i+1][1]-maxmincoordinates[2])),fill= 128,width=3)
-    im.save('roadimagefile2',format='jpeg')
+    im.save('roadimagefile1',format='jpeg')
     #return listofequationoflines
 
 def convertlattowgs(listoflistofpoints):
@@ -198,6 +203,9 @@ def DistancePointLine(px, py, x1, y1, x2, y2):
 def getlidarpointsclosest(listoflistofpoints,listoflidardata):
     listofmatchedlidarpoints = []
     listofunmatchedlidarpoints = []
+    index = 0
+    global listofmatchedindices
+    global listofunmatchedindices
     for p in listoflidardata:
         minimum_distance = 9999
         for listofpoints in listoflistofpoints:
@@ -205,12 +213,15 @@ def getlidarpointsclosest(listoflistofpoints,listoflidardata):
                 distance = DistancePointLine(p.x,p.y,listofpoints[i][0],listofpoints[i][1],listofpoints[i+1][0],listofpoints[i+1][1])
                 if distance<minimum_distance:
                     minimum_distance = distance
-        if minimum_distance <2.5:
+        if minimum_distance <5:
             listofmatchedlidarpoints.append(p)
+            listofmatchedindices.append(index)
             #print(p.x,p.y,'minimum distance:',minimum_distance)
             #count = count +1
         else:
             listofunmatchedlidarpoints.append(p)
+            listofunmatchedindices.append(index)
+        index = index +1
     print('No of lidar points matched:',len(listofmatchedlidarpoints))
     print('No of unmatched lidar points:',len(listofunmatchedlidarpoints))
     return listofmatchedlidarpoints,listofunmatchedlidarpoints
@@ -220,31 +231,63 @@ def drawimageofroadfromlidarpoints(image_size_x, image_size_y, maxmincoordinates
     for p in listofmatchedpoints:
         i.putpixel((int(p.x) - maxmincoordinates[0], int(p.y) - maxmincoordinates[2]),
                    (p.color.red, p.color.green, p.color.blue))
-    i.save('new_road_image2', format="JPEG")
+    i.save('new_road_image1', format="JPEG")
 
-def writeintotrainingfile(listofmatchedpoints,listofunmatchedpoints):
+def load_data(points_file):
+    """
+    Given a pcd file containing points in 3D, parse and return a numpy array.
+
+    rows_skip specifies the number of rows to skip. It is the pcd header info.
+    """
+    return np.loadtxt(points_file, delimiter=" ")
+
+
+def compute_relative_height(points):
+    heights = points[:,-1]
+    print(heights)
+    return np.mean(heights - np.amin(heights))
+
+
+def writeintotrainingfile(listofmatchedpoints,listofunmatchedpoints,tree,data):
     f = open('testdata.txt','a')
+    index = 0
     for p in listofmatchedpoints:
         f.write(str(p.color.red)+',')
         f.write(str(p.color.green)+',')
         f.write(str(p.color.blue)+',')
-        f.write(str(p.z)+',')
+        dist, indices = tree.query(data[listofmatchedindices[index]], 4)
+        neighbors = np.take(data, indices, axis=0)[0]
+        rel_h = compute_relative_height(neighbors)
+        f.write(str(rel_h)+',')
+        index = index +1
+        #f.write(str(p.z)+',')
         f.write(str(1))
         f.write('\n')
 
+    index = 0
     for p in listofunmatchedpoints:
         f.write(str(p.color.red)+',')
         f.write(str(p.color.green)+',')
         f.write(str(p.color.blue)+',')
-        f.write(str(p.z)+',')
+        dist, indices = tree.query(data[listofunmatchedindices[index]], 4)
+        neighbors = np.take(data, indices, axis=0)[0]
+        rel_h = compute_relative_height(neighbors)
+        f.write(str(rel_h) + ',')
+        index = index + 1
+        #f.write(str(p.z)+',')
         f.write(str(0))
         f.write('\n')
     f.close()
 
+
+
 if __name__ == "__main__":
     sf = shapefile.Reader('tl_2016_12073_roads/tl_2016_12073_roads.shp')
-    #lidar_fileName = "las_tile_46138/2035000.25_541249.75_2036250.25_539999.75.las"
-    lidar_fileName = "las_tile_46138/2035000.25_544999.75_2036250.25_543749.75.las"
+    lidar_fileName = "las_tile_46138/2035000.25_541249.75_2036250.25_539999.75.las"
+    #lidar_fileName = "las_tile_46138/2035000.25_544999.75_2036250.25_543749.75.las"
+    #lidar_fileName = "las_tile_46138/2037500.25_543749.75_2038750.25_542499.75.las"
+    data = load_data('lidar_points.txt')
+    tree = KDTree(data, leaf_size=2)
     lidar_file = lidar_proocessing.getlidardatafile(lidar_fileName)
     listoflidardata= lidar_proocessing.getlistoflidardata(lidar_file)
     lidarfile_header = lidar_proocessing.getHeaderInformation(lidar_file)
@@ -269,7 +312,7 @@ if __name__ == "__main__":
     drawlinesinimage(image_size_x,image_size_y,newlistoflistofpoints,maxmincoordinates)
     listofmatchedlidarpoints,listofunmatchedlidarpoints = getlidarpointsclosest(newlistoflistofpoints,listoflidardata)
     drawimageofroadfromlidarpoints(image_size_x,image_size_y,maxmincoordinates,listofmatchedlidarpoints)
-    writeintotrainingfile(listofmatchedlidarpoints,listofunmatchedlidarpoints)
+    writeintotrainingfile(listofmatchedlidarpoints,listofunmatchedlidarpoints,tree,data)
     exit(0)
     setofmatchedlidarpoints=getsetofmatchedlidarpoints(croppedshapes,listoflatlong,listoflidardata)
     colormatcheddatapoints(setofmatchedlidarpoints,imagefile,maxmincoordinates,lidar_fileName.replace('/','')[:-4]+'road_image')
